@@ -8,71 +8,65 @@ import adafruit_sharpmemorydisplay
 import board
 import busio
 import digitalio
+import displayio
+from adafruit_display_text import label
 
-# --- Constants for Animation ---
-SQUARE_SIZE = 2
+# from font_free_mono_8 import FONT
+from terminalio import FONT
+
+SQUARE_SIZE = 16
 MARGIN = 8
-# Control the speed of the animation (smaller is faster)
 ANIMATION_DELAY = 0.01
 
-# --- Pin Definitions & SPI Setup ---
-# Initialize SPI bus and control pins using specific Pico W GPIO pins
 spi = busio.SPI(board.GP18, MOSI=board.GP19)
 scs = digitalio.DigitalInOut(board.GP17)
 
-# --- Button Setup ---
-# The button will be connected to GP20 and Ground
 button = digitalio.DigitalInOut(board.GP20)
 button.direction = digitalio.Direction.INPUT
 button.pull = digitalio.Pull.UP  # Use internal pull-up resistor
 
-# --- Display Setup ---
-# Create the displayio display object
-# IMPORTANT: Use the correct size for your 1.3" 168x144 display
-# We also add a baudrate argument to slow down the SPI speed, which often
-# fixes display corruption issues (like seeing random lines).
 display = adafruit_sharpmemorydisplay.SharpMemoryDisplay(
     spi,
     scs,
     144,
-    168,  #  baudrate=1000000
+    168,
 )
 
-# --- Calculate Animation Boundaries ---
-# The min and max coordinates for the top-left corner of the square
-x_min = MARGIN
-y_min = MARGIN
-x_max = display.width - MARGIN - SQUARE_SIZE
-y_max = display.height - MARGIN - SQUARE_SIZE
+display.fill(1)
+main_group = displayio.Group()
+display.root_group = main_group
 
-# --- Animation State Variables ---
-# Starting position for the square
-x = x_min
-y = y_min
-# Store previous position to erase the old square
-prev_x = x
-prev_y = y
+text_to_display = "Hello, World!"
+# text_color = 0x111111
+text_color = 0
+
+# Create the label object using the imported font
+text_area = label.Label(FONT, text=text_to_display, color=text_color)
+text_area.x = 10
+text_area.y = 10
+main_group.append(text_area)
 
 
-frame = 0
-
-display.fill(1)  # Clear screen to white
 display.show()
-while True:
-    if not button.value:
-        # If button is pressed, reset animation
-        frame = 0
-        display.fill(1)  # Clear screen to white
-        display.show()
-        time.sleep(0.1)  # Debounce delay
 
-        # Update position using sine wave functions
-    x = int((x_max - x_min) / 2 * math.sin(frame * 0.1) + (x_max + x_min) / 2)
-    y = int((y_max - y_min) / 2 * math.sin(frame * 0.15) + (y_max + y_min) / 2)
+# frame = 0
 
-    display.fill_rect(x, y, SQUARE_SIZE, SQUARE_SIZE, 0)  # Draw square
-    # display.pixel(x, y, 0)
-    display.show()
-        # time.sleep(ANIMATION_DELAY)
+# while True:
+#     # display.text("Hello, World!", 10, 10, 0)
+#     # display.show()
+#     time.sleep(1)
 
-    frame += 1
+#     display.fill_rect(
+#         display.width - 10 - SQUARE_SIZE,
+#         display.height - 10 - SQUARE_SIZE,
+#         SQUARE_SIZE,
+#         SQUARE_SIZE,
+#         0,
+#     )  # Draw square
+#     display.show()
+#     # time.sleep(ANIMATION_DELAY)
+
+#     print("")
+#     print("HELLO")
+
+#     frame += 1
