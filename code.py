@@ -47,18 +47,13 @@ prev_y = y
 
 frame = 0
 
+display.fill(1)  # Clear screen to white
 while True:
-    display.fill(1)  # Clear screen to white
-    # display.fill_rect(x, y, SQUARE_SIZE, SQUARE_SIZE, 0)  # Draw square
+    # Update position using sine wave functions
+    x = int((x_max - x_min) / 2 * math.sin(frame * 0.1) + (x_max + x_min) / 2)
+    y = int((y_max - y_min) / 2 * math.sin(frame * 0.15) + (y_max + y_min) / 2)
 
-    for x in range(display.width // 4, display.width * 3 // 4):
-        for y in range(display.height // 4, display.height * 3 // 4):
-            distance_from_center = (
-                (x - display.width // 2) ** 2 + (y - display.height // 2) ** 2
-            ) ** 0.5
-            if math.sin(distance_from_center - frame) > 0.5:
-                display.pixel(x, y, 0)
-
+    display.fill_rect(x, y, SQUARE_SIZE, SQUARE_SIZE, 0)  # Draw square
     display.show()
     # time.sleep(ANIMATION_DELAY)
 
