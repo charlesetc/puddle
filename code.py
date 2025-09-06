@@ -1,6 +1,5 @@
-# SPDX-FileCopyrightText: 2021 ladyada for Adafruit Industries
-# SPDX-License-Identifier: MIT
-import json
+# pyright: reportShadowedImports=false
+
 import time
 
 import adafruit_requests
@@ -52,30 +51,49 @@ class App:
         pass
 
 
-class ClockApp(App):
-    def enter(self):
-        self.controller.text_label.text = "Clock!"
-
+class Clock(App):
     def update(self):
         self.controller.text_label.text = self.controller.get_time()
 
+        if self.controller.escape.value == 0:
+            self.controller.run("menu")
 
-apps = [
-    "clock",
-    "artwork",
-    # "weather",
-    # "news",
-    # "lobsters"
-]
+class Rotary(App):
+    def update(self):
+        self.controller.text_label.text = str(self.controller.encoder.position)
+
+
+class Menu(App):
+    def update(self):
+        if self.controller.button.value == 0:
+            self.controller.run("rotary")
+
+        self.controller.text_label.text = "Menu"
+
+        # if not self.button.value:
+        #     self.text_label.text = self.get_time()
+        # elif not self.escape.value:
+        #     self.text_label.text = "Escape!"
+        #     self.encoder.position = 0
+        # else:
+        #     self.text_label.text = str(self.encoder.position)
+        # self.display.refresh()
 
 
 class Controller:
     def __init__(self):
-        self.state = "menu"
         self.connect_wifi("Fios-gLwY5", "stem65fan74grew")
         self.fetch_reference_time()
         self.setup_physical_inputs()
         self.setup_display()
+
+        print("Display up complete!")
+
+        self.apps = {
+            "clock": Clock(self),
+            "rotary": Rotary(self),
+            "menu": Menu(self),
+        }
 
         self.main_group.append(self.create_background(self.display, 0xFFFFFF))
 
@@ -95,6 +113,17 @@ class Controller:
 
         # Set the group as the root to display it
         self.display.root_group = self.main_group
+
+        print("UI set up complete!")
+
+        self.run("menu")
+
+    def run(self, app_name):
+        if hasattr(self, "current_app") and self.current_app:
+            self.current_app.exit()
+
+        self.current_app = self.apps[app_name]
+        self.current_app.enter()
 
     def setup_physical_inputs(self):
         self.button = digitalio.DigitalInOut(board.GP20)
@@ -177,24 +206,7 @@ class Controller:
         # The display will continue to show the image.
         # An empty loop can keep the program from exiting.
         while True:
-            self.update()
-
-    def update(self):
-        if self.state == "menu":
-            self.update_menu()
-        elif self.state == "clock":
-            self.update_clock()
-        elif self.state == "artwork":
-            self.update_artwork()
-
-    def update_clock(self):
-        self.text_label.text = self.get_time()
-
-    def update_artwork(self):
-        self.text_label.text = "Art!"
-
-    def update_menu(self):
-        self.text_label.text = "Menu"
+            self.current_app.update()
 
         # if not self.button.value:
         #     self.text_label.text = self.get_time()
