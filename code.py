@@ -1,72 +1,57 @@
 # SPDX-FileCopyrightText: 2021 ladyada for Adafruit Industries
 # SPDX-License-Identifier: MIT
-
-import math
-import time
-
-import adafruit_sharpmemorydisplay
 import board
 import busio
-import digitalio
 import displayio
-from adafruit_display_text import label
-
-# from font_free_mono_8 import FONT
+import framebufferio
+import sharpdisplay
+from adafruit_display_text.label import Label
 from terminalio import FONT
 
-SQUARE_SIZE = 16
-MARGIN = 8
-ANIMATION_DELAY = 0.01
+# Release any existing displays before claiming pins
+displayio.release_displays()
 
+
+# Initialize SPI
 spi = busio.SPI(board.GP18, MOSI=board.GP19)
-scs = digitalio.DigitalInOut(board.GP17)
 
-button = digitalio.DigitalInOut(board.GP20)
-button.direction = digitalio.Direction.INPUT
-button.pull = digitalio.Pull.UP  # Use internal pull-up resistor
 
-display = adafruit_sharpmemorydisplay.SharpMemoryDisplay(
+# Create the Sharp Memory Display framebuffer
+# Pass the chip select pin DIRECTLY, not as a DigitalInOut object.
+# Width and height are set to 144x168 as requested.
+framebuffer = sharpdisplay.SharpMemoryFramebuffer(
     spi,
-    scs,
-    144,
-    168,
+    board.GP17,  # Pass the raw pin here
+    144,  # Width
+    168,  # Height
 )
 
-display.fill(1)
+# Create the display object for displayio
+display = framebufferio.FramebufferDisplay(framebuffer)
+
+# Create a group to hold the label
 main_group = displayio.Group()
+
+# Create the label
+text_label = Label(
+    font=FONT,
+    text="Hello\nWorld!",
+    x=36,  # Adjusted X position to center for 144 width
+    y=76,  # Adjusted Y position to center for 168 height
+    scale=2,
+    line_spacing=1.2,
+    color=0xFFFFFF,
+)
+
+# Add the label to the group
+main_group.append(text_label)
+
+# Set the group as the root to display it
 display.root_group = main_group
 
-text_to_display = "Hello, World!"
-# text_color = 0x111111
-text_color = 0
+print("DONE")
 
-# Create the label object using the imported font
-text_area = label.Label(FONT, text=text_to_display, color=text_color)
-text_area.x = 10
-text_area.y = 10
-main_group.append(text_area)
-
-
-display.show()
-
-# frame = 0
-
-# while True:
-#     # display.text("Hello, World!", 10, 10, 0)
-#     # display.show()
-#     time.sleep(1)
-
-#     display.fill_rect(
-#         display.width - 10 - SQUARE_SIZE,
-#         display.height - 10 - SQUARE_SIZE,
-#         SQUARE_SIZE,
-#         SQUARE_SIZE,
-#         0,
-#     )  # Draw square
-#     display.show()
-#     # time.sleep(ANIMATION_DELAY)
-
-#     print("")
-#     print("HELLO")
-
-#     frame += 1
+# The display will continue to show the image.
+# An empty loop can keep the program from exiting.
+while True:
+    pass

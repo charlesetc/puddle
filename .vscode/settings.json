@@ -1,0 +1,6 @@
+{
+    "python.analysis.extraPaths": [
+        "/Users/charles/.vscode/extensions/joedevivo.vscode-circuitpython-0.2.0-darwin-arm64/stubs"
+    ],
+    "python.analysis.stubPath": "/Users/charles/.vscode/extensions/joedevivo.vscode-circuitpython-0.2.0-darwin-arm64/stubs"
+}
