@@ -38,6 +38,28 @@ def cache(func):
     return wrapper
 
 
+class App:
+    def __init__(self, controller):
+        self.controller = controller
+
+    def enter(self):
+        pass
+
+    def exit(self):
+        pass
+
+    def update(self):
+        pass
+
+
+class ClockApp(App):
+    def enter(self):
+        self.controller.text_label.text = "Clock!"
+
+    def update(self):
+        self.controller.text_label.text = self.controller.get_time()
+
+
 apps = [
     "clock",
     "artwork",
@@ -51,41 +73,9 @@ class Controller:
     def __init__(self):
         self.state = "menu"
         self.connect_wifi("Fios-gLwY5", "stem65fan74grew")
-        self.setup_reference_time()
-
-        # Release any existing displays before claiming pins
-        displayio.release_displays()
-
-        # Initialize SPI
-        spi = busio.SPI(board.GP18, MOSI=board.GP19)
-
-        # --- Button Setup ---
-        # The button will be connected to GP20 and Ground
-        self.button = digitalio.DigitalInOut(board.GP20)
-        self.button.direction = digitalio.Direction.INPUT
-        self.button.pull = digitalio.Pull.UP  # Use internal pull-up resistor
-
-        self.escape = digitalio.DigitalInOut(board.GP16)
-        self.escape.direction = digitalio.Direction.INPUT
-        self.escape.pull = digitalio.Pull.UP  # Use internal pull-up resistor
-
-        self.encoder = rotaryio.IncrementalEncoder(board.GP0, board.GP1)
-
-        # Create the Sharp Memory Display framebuffer
-        # Pass the chip select pin DIRECTLY, not as a DigitalInOut object.
-        # Width and height are set to 144x168 as requested.
-        framebuffer = sharpdisplay.SharpMemoryFramebuffer(
-            spi,
-            board.GP17,  # Pass the raw pin here
-            144,  # Width
-            168,  # Height
-        )
-
-        # Create the display object for displayio
-        self.display = framebufferio.FramebufferDisplay(framebuffer)
-
-        # Create a group to hold the label
-        self.main_group = displayio.Group()
+        self.fetch_reference_time()
+        self.setup_physical_inputs()
+        self.setup_display()
 
         self.main_group.append(self.create_background(self.display, 0xFFFFFF))
 
@@ -106,10 +96,33 @@ class Controller:
         # Set the group as the root to display it
         self.display.root_group = self.main_group
 
+    def setup_physical_inputs(self):
+        self.button = digitalio.DigitalInOut(board.GP20)
+        self.button.direction = digitalio.Direction.INPUT
+        self.button.pull = digitalio.Pull.UP  # Use internal pull-up resistor
+
+        self.escape = digitalio.DigitalInOut(board.GP16)
+        self.escape.direction = digitalio.Direction.INPUT
+        self.escape.pull = digitalio.Pull.UP  # Use internal pull-up resistor
+
+        self.encoder = rotaryio.IncrementalEncoder(board.GP0, board.GP1)
+
+    def setup_display(self):
+        displayio.release_displays()
+        spi = busio.SPI(board.GP18, MOSI=board.GP19)
+        framebuffer = sharpdisplay.SharpMemoryFramebuffer(spi, board.GP17, 144, 168)
+        self.display = framebufferio.FramebufferDisplay(framebuffer)
+        self.main_group = displayio.Group()
+        self.display.root_group = self.main_group
+
     def connect_wifi(self, ssid, password):
         print("Connecting to WiFi...")
         wifi.radio.connect(ssid, password)
         print(f"Connected! {wifi.radio.ipv4_address}")
+
+    def clear_display(self):
+        while len(self.main_group) > 0:
+            self.main_group.pop()
 
     @cache
     def socketpool(self):
@@ -120,7 +133,7 @@ class Controller:
     def requests(self):
         return adafruit_requests.Session(self.socketpool())
 
-    def setup_reference_time(self):
+    def fetch_reference_time(self):
         try:
             response = self.requests().get(
                 "http://worldtimeapi.org/api/timezone/Etc/UTC"
@@ -181,14 +194,16 @@ class Controller:
         self.text_label.text = "Art!"
 
     def update_menu(self):
-        if not self.button.value:
-            self.text_label.text = self.get_time()
-        elif not self.escape.value:
-            self.text_label.text = "Escape!"
-            self.encoder.position = 0
-        else:
-            self.text_label.text = str(self.encoder.position)
-        self.display.refresh()
+        self.text_label.text = "Menu"
+
+        # if not self.button.value:
+        #     self.text_label.text = self.get_time()
+        # elif not self.escape.value:
+        #     self.text_label.text = "Escape!"
+        #     self.encoder.position = 0
+        # else:
+        #     self.text_label.text = str(self.encoder.position)
+        # self.display.refresh()
 
 
 controller = Controller()
