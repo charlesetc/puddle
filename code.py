@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2021 ladyada for Adafruit Industries
 # SPDX-License-Identifier: MIT
 import json
+import time
 
 import adafruit_requests
 import board
@@ -8,10 +9,11 @@ import busio
 import digitalio
 import displayio
 import framebufferio
+import rotaryio
 import sharpdisplay
 import socketpool
 import wifi
-from adafruit_datetime import datetime
+from adafruit_datetime import datetime, timedelta
 from adafruit_display_text.label import Label
 from terminalio import FONT
 
@@ -36,9 +38,20 @@ def cache(func):
     return wrapper
 
 
+apps = [
+    "clock",
+    "artwork",
+    # "weather",
+    # "news",
+    # "lobsters"
+]
+
+
 class Controller:
     def __init__(self):
+        self.state = "menu"
         self.connect_wifi("Fios-gLwY5", "stem65fan74grew")
+        self.setup_reference_time()
 
         # Release any existing displays before claiming pins
         displayio.release_displays()
@@ -48,9 +61,15 @@ class Controller:
 
         # --- Button Setup ---
         # The button will be connected to GP20 and Ground
-        button = digitalio.DigitalInOut(board.GP20)
-        button.direction = digitalio.Direction.INPUT
-        button.pull = digitalio.Pull.UP  # Use internal pull-up resistor
+        self.button = digitalio.DigitalInOut(board.GP20)
+        self.button.direction = digitalio.Direction.INPUT
+        self.button.pull = digitalio.Pull.UP  # Use internal pull-up resistor
+
+        self.escape = digitalio.DigitalInOut(board.GP16)
+        self.escape.direction = digitalio.Direction.INPUT
+        self.escape.pull = digitalio.Pull.UP  # Use internal pull-up resistor
+
+        self.encoder = rotaryio.IncrementalEncoder(board.GP0, board.GP1)
 
         # Create the Sharp Memory Display framebuffer
         # Pass the chip select pin DIRECTLY, not as a DigitalInOut object.
@@ -63,15 +82,15 @@ class Controller:
         )
 
         # Create the display object for displayio
-        display = framebufferio.FramebufferDisplay(framebuffer)
+        self.display = framebufferio.FramebufferDisplay(framebuffer)
 
         # Create a group to hold the label
-        main_group = displayio.Group()
+        self.main_group = displayio.Group()
 
-        main_group.append(self.create_background(display, 0xFFFFFF))
+        self.main_group.append(self.create_background(self.display, 0xFFFFFF))
 
         # Create the label
-        text_label = Label(
+        self.text_label = Label(
             font=FONT,
             text="Hello\nWorld!",
             x=36,  # Adjusted X position to center for 144 width
@@ -82,19 +101,15 @@ class Controller:
         )
 
         # Add the label to the group
-        main_group.append(text_label)
+        self.main_group.append(self.text_label)
 
         # Set the group as the root to display it
-        display.root_group = main_group
-
-        self.button = button
-        self.display = display
-        self.text_label = text_label
+        self.display.root_group = self.main_group
 
     def connect_wifi(self, ssid, password):
         print("Connecting to WiFi...")
         wifi.radio.connect(ssid, password)
-        print(f"Connected! IP: {wifi.radio.ipv4_address}")
+        print(f"Connected! {wifi.radio.ipv4_address}")
 
     @cache
     def socketpool(self):
@@ -105,7 +120,7 @@ class Controller:
     def requests(self):
         return adafruit_requests.Session(self.socketpool())
 
-    def get_time(self):
+    def setup_reference_time(self):
         try:
             response = self.requests().get(
                 "http://worldtimeapi.org/api/timezone/Etc/UTC"
@@ -114,14 +129,26 @@ class Controller:
 
             datetime_str = time_data["datetime"]
             dt = datetime.fromisoformat(datetime_str)
+            self.reference_time = [dt, time.time()]
 
-            return f"{dt.hour:02}:{dt.minute:02}:{dt.second:02}"
+            print(f"Finished setting reference time: {dt}")
         except Exception as e:
             print(f"Error getting time: {e}")
-            return "err: time"
         finally:
             if "response" in locals():
                 response.close()
+
+    def get_time(self):
+        if not hasattr(self, "reference_time"):
+            return "no ref time"
+
+        dt, at_time = self.reference_time
+        elapsed = time.time() - at_time
+
+        new_dt = datetime.fromtimestamp(dt.timestamp() + int(elapsed))
+        # convert to local time (Eastern)
+        new_dt = new_dt - timedelta(hours=4)
+        return f"{new_dt.hour:02}:{new_dt.minute:02}:{new_dt.second:02}"
 
     def create_background(self, display, color):
         # Create a bitmap for the background
@@ -140,10 +167,27 @@ class Controller:
             self.update()
 
     def update(self):
-        if self.button.value:
-            self.text_label.text = "Hello\nWorld!"
-        else:
+        if self.state == "menu":
+            self.update_menu()
+        elif self.state == "clock":
+            self.update_clock()
+        elif self.state == "artwork":
+            self.update_artwork()
+
+    def update_clock(self):
+        self.text_label.text = self.get_time()
+
+    def update_artwork(self):
+        self.text_label.text = "Art!"
+
+    def update_menu(self):
+        if not self.button.value:
             self.text_label.text = self.get_time()
+        elif not self.escape.value:
+            self.text_label.text = "Escape!"
+            self.encoder.position = 0
+        else:
+            self.text_label.text = str(self.encoder.position)
         self.display.refresh()
 
 
