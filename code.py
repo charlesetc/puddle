@@ -84,15 +84,46 @@ class Rotary(App):
 
 class Menu(App):
     def enter(self):
-        self.text_label = simple_label("Menu")
         self.controller.clear_display()
-        self.controller.add_widget(self.text_label)
+
+        self.chosen_index = 0
+        self.labels = []
+
+        y = 20
+
+        for app in self.controller.apps:
+            if app == "menu":
+                continue
+
+            label = Label(
+                font=FONT,
+                text=app,
+                x=10,  # Adjusted X position to center for 144 width
+                y=y,  # Adjusted Y position to center for 168 height
+                scale=2,
+                line_spacing=1.2,
+                color=0x000000,
+            )
+
+            self.controller.add_widget(label)
+            self.labels.append(label)
+
+            y += 30
 
     def update(self):
         if self.controller.button.value == 0:
-            self.controller.run("rotary")
+            selected_app = self.labels[self.chosen_index].text
+            self.controller.run(selected_app)
 
-        self.text_label.text = "Menu"
+        self.chosen_index = self.controller.encoder.position % (
+            len(self.controller.apps) - 1
+        )
+
+        for i, label in enumerate(self.labels):
+            if i == self.chosen_index:
+                label.color = 0xFF0000
+            else:
+                label.color = 0x000000
 
 
 class Controller:
