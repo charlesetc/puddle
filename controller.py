@@ -33,28 +33,31 @@ class Controller:
             "menu": Menu(self),
         }
 
-        self.main_group.append(self.create_background(self.display, 0xFFFFFF))
+        # self.main_group.append(self.create_background(self.display, 0xFFFFFF))
 
-        # Create the label
-        self.text_label = Label(
-            font=FONT,
-            text="Hello\nWorld!",
-            x=36,  # Adjusted X position to center for 144 width
-            y=76,  # Adjusted Y position to center for 168 height
-            scale=2,
-            line_spacing=1.2,
-            color=0x000000,
-        )
+        # # Create the label
+        # self.text_label = Label(
+        #     font=FONT,
+        #     text="Hello\nWorld!",
+        #     x=36,  # Adjusted X position to center for 144 width
+        #     y=76,  # Adjusted Y position to center for 168 height
+        #     scale=2,
+        #     line_spacing=1.2,
+        #     color=0x000000,
+        # )
 
-        # Add the label to the group
-        self.main_group.append(self.text_label)
+        # # Add the label to the group
+        # self.main_group.append(self.text_label)
 
-        # Set the group as the root to display it
-        self.display.root_group = self.main_group
+        # # Set the group as the root to display it
+        # self.display.root_group = self.main_group
 
-        print("UI set up complete!")
+        # print("UI set up complete!")
 
         self.run("menu")
+
+    def add_widget(self, widget):
+        self.main_group.append(widget)
 
     def run(self, app_name):
         if hasattr(self, "current_app") and self.current_app:
@@ -87,9 +90,11 @@ class Controller:
         wifi.radio.connect(ssid, password)
         print(f"Connected! {wifi.radio.ipv4_address}")
 
-    def clear_display(self):
+    def clear_display(self, color=0xFFFFFF):
         while len(self.main_group) > 0:
             self.main_group.pop()
+
+        self.main_group.append(self.create_background(self.display, color))
 
     @cache
     def socketpool(self):

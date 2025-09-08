@@ -1,5 +1,5 @@
 run:
-	cp ./code.py /Volumes/CIRCUITPY/code.py
+	cp ./*.py /Volumes/CIRCUITPY/
 
 install folder_or_file:
 	cp -r $(folder_or_file) /Volumes/CIRCUITPY/lib/
